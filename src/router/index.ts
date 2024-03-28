@@ -6,6 +6,7 @@ import { showToast } from '@/utils'
 import 'vue-router'
 import { useAuthStore, translate } from '@hotwax/dxp-components'
 import Login from "@/views/Login.vue"
+import Tabs from '@/components/Tabs.vue';
 import { computed } from 'vue';
 
 // Defining types for the meta values
@@ -43,8 +44,6 @@ declare module 'vue-router' {
 // };
 
 const loginGuard = (to: any, from: any, next: any) => {
-  console.log("oming here or not");
-  
   const userStore = useUserStore()
   if (!userStore.isAuthenticated) {
     next()
@@ -53,11 +52,10 @@ const loginGuard = (to: any, from: any, next: any) => {
   }
 };
 const authGuard = (to: any, from: any, next: any) => {
-  console.info('======================================')
   const userStore = useUserStore()
   
-  const isAuthenticated = computed(() => userStore.isAuthenticated)
-  console.log(isAuthenticated);
+  // const isAuthenticated = computed(() => userStore.isAuthenticated)
+  // console.log(isAuthenticated);
   
   if (userStore.isAuthenticated) {
     next()
@@ -69,7 +67,7 @@ const authGuard = (to: any, from: any, next: any) => {
 const routes: Array<RouteRecordRaw> = [
   {
     path: '/',
-    redirect: '/settings'
+    redirect: '/tabs/settings'
   },
   {
     path: '/login',
@@ -78,11 +76,25 @@ const routes: Array<RouteRecordRaw> = [
     beforeEnter: loginGuard
 
   },
+  // {
+  //   path: "/settings",
+  //   name: "Settings",
+  //   component: Settings,
+  //   beforeEnter: authGuard
+  // },
   {
-    path: "/settings",
-    name: "Settings",
-    component: Settings,
-    beforeEnter: authGuard
+    path: '/tabs',
+    component: Tabs,
+    children: [
+      {
+        path: 'PG-Status',
+        component: () => import('@/views/ProcessGroupStatus.vue'),
+      },{
+        path: 'settings',
+        component: () => import('@/views/Settings.vue')
+      },
+    ],
+    beforeEnter: authGuard,
   },
 ]
 

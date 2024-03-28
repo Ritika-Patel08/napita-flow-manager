@@ -27,22 +27,6 @@ const login = async (username: string, password: string): Promise<any> => {
 }
 
 const fetchExpirationTime = async (token: any): Promise<any> => {
-  // try {
-  //     console.log("expire");
-  //   const userStore = useUserStore();
-  //   const baseUrl = userStore.getBaseUrl;
-  //   const apiUrl = `https://${baseUrl}.hotwax.io/nifi-api/access/token/expiration`;
-    
-  //   const response = await axios.get(apiUrl, {
-  //     headers: {
-  //       'Authorization': `Bearer ${token}`
-  //     }
-  //   });
-  //   return response;
-  // } catch (err) {
-  //   return Promise.reject("Sorry, login failed. Please try again");
-  // }
-
   const userStore = useUserStore();
   const baseURL = userStore.getBaseUrl;
 
@@ -55,20 +39,75 @@ const fetchExpirationTime = async (token: any): Promise<any> => {
         'Authorization': `Bearer ${token}`
       }
     }) as any;
-    // if (!hasError(resp) && resp) {
-    //   expirationTimeDetails = resp
-    // } else {
-    //   throw "Sorry, login failed. Please try again";
-    // }
-    console.log(resp);
-    
     return Promise.resolve(resp);
   } catch (err) {
     return Promise.reject("Sorry, login failed. Please try again");
   }
+}
+const FetchProcessGroups = async (token: any, root: any): Promise<any> => {
+  const userStore = useUserStore();
+  const baseURL = userStore.getBaseUrl;
 
+  try {
+    const resp = await client({
+      url: `flow/process-groups/${root}`,
+      method: "get",
+      baseURL,
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    }) as any;
+    const processGroupDetails = resp.data.processGroupFlow.flow.processGroups.map((group: any) => ({
+          id: group.id,
+          name: group.component.name,
+          runningCount: group.runningCount,
+          stoppedCount: group.stoppedCount,
+          invalidCount: group.invalidCount,
+          disabledCount: group.disabledCount,
+          inputPortCount: group.inputPortCount
+        }));
+    //console.log(processGroupDetails);
+    return Promise.resolve(processGroupDetails);
+  } catch (err) {
+    console.log(err);  
+    return Promise.reject("Sorry, login failed. Please try again");
+  }
 }
 
+const FetchProcessGroupsConnection = async (root: any, token: any, groupId: any): Promise<any> => {  
+  const userStore = useUserStore();
+  const baseURL = userStore.getBaseUrl;
+
+  try {
+    const resp = await client({
+      url: `flow/process-groups/${root}`,
+      method: "get",
+      baseURL,
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    }) as any;
+    const connections = resp.data.processGroupFlow.flow.connections;
+    
+    const connection = connections.find((conn: any) => conn.destination?.groupId === groupId);
+    
+    if (connection) {
+      const sourceGroupId = connection.source?.id;
+      if (sourceGroupId) {
+        console.log(sourceGroupId);
+        return Promise.resolve(sourceGroupId);
+      } else {
+        return Promise.reject("SourceId not found in the connection object");
+      }
+    } else {
+      return Promise.reject("GroupId not found in any destination");
+    }
+  } catch (err) {
+    console.log(err);  
+    return Promise.reject("Sorry, login failed. Please try again");
+  }
+}
+  
 const logout = async (token: any): Promise<any> => {
   const userStore = useUserStore();
   const baseURL = userStore.getBaseUrl;
@@ -92,5 +131,7 @@ const logout = async (token: any): Promise<any> => {
 export const UserService = {
   login,
   fetchExpirationTime,
-  logout
+  logout,
+  FetchProcessGroups,
+  FetchProcessGroupsConnection
 }

@@ -9,7 +9,10 @@ export const useUserStore = defineStore('user', {
       token: {
         value: '',
         expirationTime: ''
-      }as any
+      }as any,
+      processGroups: [],
+      currentProcessGroup:{} as any,
+      root:'a3229852-0187-1000-8abc-9e42ca1734f2'
     }
   },
   getters: {
@@ -24,15 +27,20 @@ export const useUserStore = defineStore('user', {
     getUserToken(state) {
       return state.token;
     },
+    getProcessGroups(state) {
+      return state.processGroups
+    },
+    getCurrentProcessGroup(state) {
+      return state.currentProcessGroup
+    },
     isAuthenticated(state) {
       let isTokenExpired = false
       
       if (state.token.expirationTime) {
-        console.log(state.token.expirationTime);
+
         const currTime = DateTime.now().toMillis()
         isTokenExpired = state.token.expirationTime < currTime
       }
-      console.log(state.token.value, !isTokenExpired);
       
       return state.token.value && !isTokenExpired
     }
@@ -45,22 +53,48 @@ export const useUserStore = defineStore('user', {
         }
 
         const token = await UserService.login(username, password);
-        console.log(token);
  
         this.token.value = token;
       
         const expirationTimeDetails = await UserService.fetchExpirationTime(token);
     
         const expirationDateTime = DateTime.fromISO(expirationTimeDetails.data.accessTokenExpiration.expiration).toMillis();
-        console.log(expirationDateTime);
-        
-        this.token.expirationTime = expirationDateTime;
-        
-        return Promise.resolve(token)
 
+        this.token.expirationTime = expirationDateTime;
+
+        // const processGroups = await UserService.FetchProcessGroups(token);
+        // this.processGroups = processGroups.processGroupFlow.flow.processGroups.map((group: any) => group.component.name);
+        const processGroups = await UserService.FetchProcessGroups(token,this.root);
+        this.processGroups = processGroups;
+
+        return Promise.resolve(token)
       } catch(err){
+        console.log("user.ts",err);
+        
         return Promise.reject(err)
       }
+    },
+    async fetchProcessGroupFromParent(root: any){
+      try {
+        const token = this.token.value;
+        const fetchProcessGroupFromParent = await UserService.FetchProcessGroups(token,root);      
+        return Promise.resolve(fetchProcessGroupFromParent);
+      }catch(err){
+        Promise.reject(err);
+      }
+    },
+    async fetchProcessGroupConnection(groupId: any){
+      try {
+        const token = this.token.value;
+        const root = this.root;
+        const fetchProcessGroupConnection = await UserService.FetchProcessGroupsConnection(token,root,groupId);      
+        return Promise.resolve(fetchProcessGroupConnection);
+      }catch(err){
+        Promise.reject(err);
+      }
+    },
+    setCurrentProcessGroup(processGroup: any) {
+      this.currentProcessGroup = processGroup;
     },
     async setUserInstanceUrl(instanceUrl: string) {
       this.instanceUrl = instanceUrl;
@@ -69,10 +103,8 @@ export const useUserStore = defineStore('user', {
     {
       const token = this.token.value;
       this.token.value = ''
-      const logtut1 = await UserService.logout(token);
-      console.log(logtut1);
-    
-    }
+      await UserService.logout(token);
+    },
   },
   persist: true,
 })
