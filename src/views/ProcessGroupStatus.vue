@@ -10,22 +10,22 @@
 		<ion-content>
 			<!-- {{ CurrentProcessGroup }}			 -->
 			<main>
-        <div v-if="currentProcessGroupDetail && currentProcessGroupDetail.length">
-          <div class="list-item" v-for="groupDetail in currentProcessGroupDetail" :key="groupDetail.id" :value="groupDetail.id">
-            <ion-item>
-              <ion-label>
-                {{ groupDetail.name }}
-								<ion-button slot="end" :color="processGroupStatus(groupDetail) ? 'success' : 'danger'">
-                  {{ processGroupStatus(groupDetail) ? 'Running' : 'Stopped' }}
-                </ion-button>
-              </ion-label>
-            </ion-item>
-          </div>
-        </div>
-        <div v-else>
-          <p class="ion-text-center">{{ translate("No groups found") }}</p>
-        </div>
-      </main>
+				<div v-if="currentProcessGroupDetail && currentProcessGroupDetail.length">
+					<div class="list-item" v-for="groupDetail in currentProcessGroupDetail" :key="groupDetail.id"
+						:value="groupDetail.id">
+						<ion-item>
+							<ion-label class="ion-badge-container">
+								{{ groupDetail.name }}
+							</ion-label>
+							<ion-badge slot="end" color="success" v-if="groupDetail.status === 'Running'">Running</ion-badge>
+							<ion-badge slot="end" color="danger" v-if="groupDetail.status === 'Stopped'">Stopped</ion-badge>
+						</ion-item>
+					</div>
+				</div>
+				<div v-else>
+					<p class="ion-text-center">{{ translate("No groups found") }}</p>
+				</div>
+			</main>
 		</ion-content>
 	</ion-page>
 </template>
@@ -38,51 +38,46 @@ import { computed, ref } from "vue";
 
 const userStore = useUserStore();
 const CurrentProcessGroup = computed(() => userStore.getCurrentProcessGroup);
-const currentProcessGroupDetail = ref([]);
+const currentProcessGroupDetail = ref([]) as any;
 
 async function fetchProcessGroupData() {
 	try {
 		let root = userStore.getCurrentProcessGroup;
 		root = root.id;
-		currentProcessGroupDetail.value = await userStore.fetchProcessGroupFromParent(root); // Assuming this method exists in your Vuex store to fetch process group data
-		console.log(currentProcessGroupDetail);
-
+		currentProcessGroupDetail.value = await userStore.fetchProcessGroupFromParent(root); // Assuming this method exists in your pinia store to fetch process group data
 	} catch (error) {
 		console.error('Error fetching process group data:', error);
 	}
 }
 
-// function processGroupStatus(groupDetail: any) {
-// 	if(groupDetail.stoppedCount != 0 || groupDetail.invalidCount != 0){
-// 		return false;
-// 	}else if(groupDetail.runningCount > 0 && groupDetail.inputPortCount == 0) {
-// 		return true;
-// 	}else{
-// 		return false;
-// 	}
-// 	// }else if(groupDetail.inputPortCount != 0 && groupDetail.runningCount > 0) {
-// 	//   const currentProcessGroupConnectionDetail =userStore.fetchProcessGroupFromParent(groupDetail.id) //fetching the source-> groupId 
-// 	// 	console.log(currentProcessGroupConnectionDetail);
-// 	// 	return true
-// 	// }
-// 	//return true;
-// }
-function processGroupStatus(groupDetail: any) {
-	if (groupDetail.stoppedCount != 0 || groupDetail.invalidCount != 0){
-		return false;
-	}else if(groupDetail.inputPortCount != 0) {
-		console.log("esrdtfghjkl");
-		
-	  const currentProcessGroupConnectionDetail =userStore.fetchProcessGroupFromParent(groupDetail.id) //fetching the source-> groupId 
-		console.log(currentProcessGroupConnectionDetail);
-		return true
-	} else {
-		return true;
+async function processGroupStatus() {
+	if (currentProcessGroupDetail) {
+		currentProcessGroupDetail.value.map(async(groupDetail: any) => {
+			if (groupDetail.stoppedCount != 0 || groupDetail.invalidCount != 0) {
+				groupDetail.status = 'Stopped'
+			} else if (groupDetail.inputPortCount == 0 && groupDetail.runningCount != 0) {
+				groupDetail.status = 'Running'
+			} else if (groupDetail.inputPortCount != 0) {
+				const currentProcessGroupConnectionId = await userStore.fetchProcessGroupConnection(groupDetail.id) //fetching the source-> groupId 
+				console.log("connection:", currentProcessGroupConnectionId);
+                const process = currentProcessGroupDetail.value.find((source: any) => {
+                    return source.id === currentProcessGroupConnectionId;
+                });
+                console.log("ans:", process);	
+				if(process.status && process.status === "Running"){
+					groupDetail.status = 'Running'
+				} else {
+					groupDetail.status = 'Stopped'
+				}			
+			}
+		})
 	}
+	return true
 }
 
-onIonViewWillEnter(() => {
-	fetchProcessGroupData();
+onIonViewWillEnter(async () => {
+	await fetchProcessGroupData();
+	await processGroupStatus()
 });
 </script>
 

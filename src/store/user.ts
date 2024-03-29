@@ -87,7 +87,7 @@ export const useUserStore = defineStore('user', {
       try {
         const token = this.token.value;
         const root = this.root;
-        const fetchProcessGroupConnection = await UserService.FetchProcessGroupsConnection(token,root,groupId);      
+        const fetchProcessGroupConnection = await UserService.FetchProcessGroupsConnection(root,token,groupId);      
         return Promise.resolve(fetchProcessGroupConnection);
       }catch(err){
         Promise.reject(err);

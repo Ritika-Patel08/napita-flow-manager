@@ -1,5 +1,5 @@
-import { useUserStore } from '@/store/user';
-import axios from 'axios';
+import { useUserStore } from '@/store/user'
+import axios from 'axios'
 import { client } from "@/api"
 
 const login = async (username: string, password: string): Promise<any> => {
@@ -41,7 +41,7 @@ const fetchExpirationTime = async (token: any): Promise<any> => {
     }) as any;
     return Promise.resolve(resp);
   } catch (err) {
-    return Promise.reject("Sorry, login failed. Please try again");
+    return Promise.reject("failed to fetch expiration time");
   }
 }
 const FetchProcessGroups = async (token: any, root: any): Promise<any> => {
@@ -66,45 +66,42 @@ const FetchProcessGroups = async (token: any, root: any): Promise<any> => {
           disabledCount: group.disabledCount,
           inputPortCount: group.inputPortCount
         }));
-    //console.log(processGroupDetails);
+   
     return Promise.resolve(processGroupDetails);
   } catch (err) {
     console.log(err);  
-    return Promise.reject("Sorry, login failed. Please try again");
+    return Promise.reject("Failed to fetch process groups");
   }
 }
 
-const FetchProcessGroupsConnection = async (root: any, token: any, groupId: any): Promise<any> => {  
+const FetchProcessGroupsConnection = async (root: any, token: any, groupId: any): Promise<any> => {
   const userStore = useUserStore();
   const baseURL = userStore.getBaseUrl;
-
+  const id = userStore.getCurrentProcessGroup.id
   try {
     const resp = await client({
-      url: `flow/process-groups/${root}`,
+      url: `flow/process-groups/${id}`,
       method: "get",
       baseURL,
       headers: {
         'Authorization': `Bearer ${token}`
       }
     }) as any;
-    const connections = resp.data.processGroupFlow.flow.connections;
-    
-    const connection = connections.find((conn: any) => conn.destination?.groupId === groupId);
-    
-    if (connection) {
-      const sourceGroupId = connection.source?.id;
-      if (sourceGroupId) {
-        console.log(sourceGroupId);
-        return Promise.resolve(sourceGroupId);
-      } else {
-        return Promise.reject("SourceId not found in the connection object");
-      }
+    const connections = resp.data.processGroupFlow.flow.connections.map((group: any) => ({
+       sourceId: group.component.source.groupId,
+       destId: group.component.destination.groupId
+    }));  
+    // Find the connection with destId equal to groupId
+    const findConnection = connections.find((connection: any) => connection.destId === groupId);
+
+    if (findConnection) {
+      return Promise.resolve(findConnection.sourceId); // Return sourceId
     } else {
-      return Promise.reject("GroupId not found in any destination");
+      return Promise.reject("Connection not found for groupId: " + groupId);
     }
   } catch (err) {
     console.log(err);  
-    return Promise.reject("Sorry, login failed. Please try again");
+    return Promise.reject("Failed to fetch process groups connections");
   }
 }
   
