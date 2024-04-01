@@ -3,7 +3,7 @@
     <ion-tabs>
       <ion-router-outlet></ion-router-outlet>
       <ion-tab-bar slot="bottom">
-        <ion-tab-button tab="processgroups" href="/tabs/PG-Status">
+        <ion-tab-button tab="process" href="/tabs/process">
           <ion-icon :icon="personOutline" />
           <ion-label>{{ translate("Process") }}</ion-label>
         </ion-tab-button>

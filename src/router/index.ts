@@ -49,12 +49,6 @@ const routes: Array<RouteRecordRaw> = [
     beforeEnter: loginGuard
 
   },
-  // {
-  //   path: "/settings",
-  //   name: "Settings",
-  //   component: Settings,
-  //   beforeEnter: authGuard
-  // },
   {
     path: '/tabs',
     component: Tabs,

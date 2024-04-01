@@ -64,9 +64,11 @@ const FetchProcessGroups = async (token: any, root: any): Promise<any> => {
           stoppedCount: group.stoppedCount,
           invalidCount: group.invalidCount,
           disabledCount: group.disabledCount,
-          inputPortCount: group.inputPortCount
+          inputPortCount: group.inputPortCount,
+          outputPortCount: group.outputPortCount
         }));
-   
+    console.log(processGroupDetails);
+    
     return Promise.resolve(processGroupDetails);
   } catch (err) {
     console.log(err);  
@@ -89,13 +91,13 @@ const FetchProcessGroupsConnection = async (root: any, token: any, groupId: any)
     }) as any;
     const connections = resp.data.processGroupFlow.flow.connections.map((group: any) => ({
        sourceId: group.component.source.groupId,
-       destId: group.component.destination.groupId
+       destinationId: group.component.destination.groupId
     }));  
-    // Find the connection with destId equal to groupId
-    const findConnection = connections.find((connection: any) => connection.destId === groupId);
+    // Find the connection with destinationId equal to groupId
+    const findConnection = connections.find((connection: any) => connection.destinationId === groupId);
 
     if (findConnection) {
-      return Promise.resolve(findConnection.sourceId); // Return sourceId
+      return Promise.resolve({ sourceId: findConnection.sourceId, destinationId: findConnection.destinationId });
     } else {
       return Promise.reject("Connection not found for groupId: " + groupId);
     }

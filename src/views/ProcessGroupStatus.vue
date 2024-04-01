@@ -11,14 +11,15 @@
 			<!-- {{ CurrentProcessGroup }}			 -->
 			<main>
 				<div v-if="currentProcessGroupDetail && currentProcessGroupDetail.length">
-					<div class="list-item" v-for="groupDetail in currentProcessGroupDetail" :key="groupDetail.id"
-						:value="groupDetail.id">
+					<div class="list-item" v-for="process in currentProcessGroupDetail" :key="process.id"
+						:value="process.id">
 						<ion-item>
 							<ion-label class="ion-badge-container">
-								{{ groupDetail.name }}
+								{{ process.name }}
 							</ion-label>
-							<ion-badge slot="end" color="success" v-if="groupDetail.status === 'Running'">Running</ion-badge>
-							<ion-badge slot="end" color="danger" v-if="groupDetail.status === 'Stopped'">Stopped</ion-badge>
+							<ion-badge slot="end" color="success"
+								v-if="process.status === 'Running'">Running</ion-badge>
+							<ion-badge slot="end" color="danger" v-if="process.status === 'Stopped'">Stopped</ion-badge>
 						</ion-item>
 					</div>
 				</div>
@@ -50,31 +51,70 @@ async function fetchProcessGroupData() {
 	}
 }
 
-async function processGroupStatus() {
-	if (currentProcessGroupDetail) {
-		currentProcessGroupDetail.value.map(async(groupDetail: any) => {
-			if (groupDetail.stoppedCount != 0 || groupDetail.invalidCount != 0) {
-				groupDetail.status = 'Stopped'
-			} else if (groupDetail.inputPortCount == 0 && groupDetail.runningCount != 0) {
-				groupDetail.status = 'Running'
-			} else if (groupDetail.inputPortCount != 0) {
-				const currentProcessGroupConnectionId = await userStore.fetchProcessGroupConnection(groupDetail.id) //fetching the source-> groupId 
-				console.log("connection:", currentProcessGroupConnectionId);
-                const process = currentProcessGroupDetail.value.find((source: any) => {
-                    return source.id === currentProcessGroupConnectionId;
-                });
-                console.log("ans:", process);	
-				if(process.status && process.status === "Running"){
-					groupDetail.status = 'Running'
+async function updateProcessStatus(process: any) {	
+	let status = '';
+	if (process.stoppedCount !== 0 || process.invalidCount !== 0) {
+		status = 'Stopped'
+	} else if (process.inputPortCount == 0 && process.runningCount != 0) {
+		status = 'Running'
+	} else if (process.inputPortCount !== 0 || process.outputPortCount !== 0) {
+		if (process.inputPortCount!=0) {
+			const currentProcessGroupConnectionId = await userStore.fetchProcessGroupConnection(process.id) //fetching the source-> groupId 
+			const sourceProcess = currentProcessGroupDetail.value.find((source: any) => {
+				return source.id === currentProcessGroupConnectionId.sourceId;
+			});
+			if (sourceProcess.status && sourceProcess.status === "Running") {
+				status = 'Running'
+			} else {
+				if (sourceProcess.status && sourceProcess.status === "Stopped") {
+					status = 'Stopped'
 				} else {
-					groupDetail.status = 'Stopped'
-				}			
+					await updateProcessStatus(sourceProcess);
+					const UpdatedsourceProcess = currentProcessGroupDetail.value.find((source: any) => {
+						return source.id === sourceProcess.id;
+					});
+					console.log("Inpurtport:xcvbn", UpdatedsourceProcess);
+					status = UpdatedsourceProcess.status;
+				}
 			}
-		})
+		}
+		if (process.outputPortCount!=0) {
+			const currentProcessGroupConnectionId = await userStore.fetchProcessGroupConnection(process.id) //fetching the source-> groupId 
+			const destinationProcess = currentProcessGroupDetail.value.find((destination: any) => {
+				console.log("outputPort:", process.outputPortCount);
+				return destination.id === currentProcessGroupConnectionId.destinationId;
+			});
+			if (destinationProcess.status && destinationProcess.status === "Running") {
+				status = 'Running'
+			} else {
+				if (destinationProcess.status && destinationProcess.status === "Stopped") {
+					status = 'Stopped'
+				} else {
+					await updateProcessStatus(destinationProcess);
+					const UpdatedDestinationProcess = currentProcessGroupDetail.value.find((destination: any) => {
+						return destination.id === destinationProcess.id;
+					});
+					console.log("outputPort:", UpdatedDestinationProcess);
+					status = UpdatedDestinationProcess.status;
+				}
+			}
+		}
+	} else {
+		status = 'Stopped';
 	}
-	return true
+	return process.status = status;
 }
 
+async function processGroupStatus() {
+	console.log(currentProcessGroupDetail.value);
+
+	if (currentProcessGroupDetail) {
+		currentProcessGroupDetail.value.map(async (process: any) => {
+			await updateProcessStatus(process);
+		}
+		)
+	}
+}
 onIonViewWillEnter(async () => {
 	await fetchProcessGroupData();
 	await processGroupStatus()
